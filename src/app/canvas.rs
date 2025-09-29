@@ -35,7 +35,6 @@ impl Canvas {
     fn check_bounds(&self, x: usize, y: usize) -> bool {
         x < self.width && y < self.height
     }
-
 }
 
 // =============== Доступ к отдельным пикселям холста ===============
@@ -70,22 +69,28 @@ impl Canvas {
     fn find_line_bounds(&self, x: usize, y: usize, old_color: Color32) -> (usize, usize) {
         let mut left = x;
         let mut right = x;
-        
+
         while self.check_bounds(left, y) && self[(left, y)] == old_color {
             left -= 1;
         }
         left += 1;
-        
+
         while self.check_bounds(right, y) && self[(right, y)] == old_color {
             right += 1;
         }
         right -= 1;
-        
+
         (left, right)
     }
 
     /// Вспомогательная функция для проверки и добавления точки в стек
-    fn check_and_push(&self, x: usize, y: usize, old_color: Color32, stack: &mut VecDeque<(usize, usize)>) {
+    fn check_and_push(
+        &self,
+        x: usize,
+        y: usize,
+        old_color: Color32,
+        stack: &mut VecDeque<(usize, usize)>,
+    ) {
         if self.check_bounds(x, y) && self[(x, y)] == old_color {
             stack.push_back((x, y));
         }
@@ -98,28 +103,32 @@ impl Canvas {
     pub fn fill_with_color(&mut self, pos: Pos2, color: Color32, connectivity: Connectivity) {
         let start_x = pos.x as usize;
         let start_y = pos.y as usize;
-        
-        if !self.check_bounds(start_x, start_y) { return; }
-        
+
+        if !self.check_bounds(start_x, start_y) {
+            return;
+        }
+
         let old_color = self[(start_x, start_y)];
-        if old_color == color { return; }
-        
+        if old_color == color {
+            return;
+        }
+
         let mut stack = VecDeque::new();
         stack.push_back((start_x, start_y));
-        
+
         while let Some((x, y)) = stack.pop_front() {
             if !self.check_bounds(x, y) || self[(x, y)] != old_color {
                 continue;
             }
-            
+
             let (left, right) = self.find_line_bounds(x, y, old_color);
-            
+
             for i in left..=right {
                 if self.check_bounds(i, y) {
                     self[(i, y)] = color;
                 }
             }
-            
+
             match connectivity {
                 Connectivity::FOUR => {
                     for i in left..=right {
@@ -131,7 +140,7 @@ impl Canvas {
                 }
                 Connectivity::EIGHT => {
                     for i in left..=right {
-                       if y > 0 {
+                        if y > 0 {
                             self.check_and_push(i, y - 1, old_color, &mut stack);
                         }
                         self.check_and_push(i, y + 1, old_color, &mut stack);
@@ -159,34 +168,36 @@ impl Canvas {
     pub fn fill_with_img(&mut self, pos: Pos2, img: &ColorImage, connectivity: Connectivity) {
         let start_x = pos.x as usize;
         let start_y = pos.y as usize;
-        
-        if !self.check_bounds(start_x, start_y) { return; }
-        
+
+        if !self.check_bounds(start_x, start_y) {
+            return;
+        }
+
         let old_color = self[(start_x, start_y)];
         let img_width = img.width();
         let img_height = img.height();
-        
+
         let mut stack = VecDeque::new();
         stack.push_back((start_x, start_y));
-        
+
         while let Some((x, y)) = stack.pop_front() {
             if !self.check_bounds(x, y) || self[(x, y)] != old_color {
                 continue;
             }
-            
+
             let (left, right) = self.find_line_bounds(x, y, old_color);
-            
+
             for i in left..=right {
                 if self.check_bounds(i, y) {
                     let img_x = (i - start_x).rem_euclid(img_width);
                     let img_y = (y - start_y).rem_euclid(img_height);
-                    
+
                     if img_x < img_width && img_y < img_height {
                         self[(i, y)] = img[(img_x, img_y)];
                     }
                 }
             }
-            
+
             match connectivity {
                 Connectivity::FOUR => {
                     for i in left..=right {
@@ -203,7 +214,7 @@ impl Canvas {
                         }
                         self.check_and_push(i, y + 1, old_color, &mut stack);
                     }
-                    
+
                     if y > 0 {
                         if left > 0 {
                             self.check_and_push(left - 1, y - 1, old_color, &mut stack);
@@ -229,10 +240,40 @@ impl Canvas {
     /// pos2 - вторая точка линии;
     /// color - цвет линии;
     pub fn draw_sharp_line(&mut self, pos1: Pos2, pos2: Pos2, color: Color32) {
-        // TODO
-        // для операций над холстом использовать эти методы:
-        // self[(x, y)]; - выдаёт egui::Color32
-        // self[(x, y)] = color; - устанавлиает цвет пикселя
+        let x0 = pos1.x as i32;
+        let y0 = pos1.y as i32;
+        let x1 = pos2.x as i32;
+        let y1 = pos2.y as i32;
+
+        let deltax = (x1 - x0).abs();
+        let deltay = (y1 - y0).abs();
+
+        let mut error = 0;
+        let deltaerr = deltay + 1;
+        let mut y = y0;
+
+        let mut diry = y1 - y0;
+        if diry > 0 {
+            diry = 1;
+        } else if diry < 0 {
+            diry = -1;
+        } else {
+            diry = 0;
+        }
+
+        let step_x = if x0 <= x1 { 1 } else { -1 };
+        let mut x = x0;
+
+        while x != x1 + step_x {
+            self[(x as usize, y as usize)] = color;
+
+            error += deltaerr;
+            if error >= (deltax + 1) {
+                y += diry;
+                error -= deltax + 1;
+            }
+            x += step_x;
+        }
     }
 
     /// Рисование линии алгоритмом Ву.
