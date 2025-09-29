@@ -233,8 +233,6 @@ impl Canvas {
 
 // Задание 2 (линии)
 impl Canvas {
-    // Сюда можно приватные вспомогательные методы, если нужно
-
     /// Рисование линии алгоритмом Брезенхема.
     /// pos1 - первая точка линии;
     /// pos2 - вторая точка линии;
@@ -280,11 +278,52 @@ impl Canvas {
     /// pos1 - первая точка линии;
     /// pos2 - вторая точка линии;
     /// color - цвет линии;
-    pub fn draw_smooth_line(&mut self, pos1: Pos2, pos2: Pos2, color: Color32) {
-        // TODO
-        // для операций над холстом использовать эти методы:
-        // self[(x, y)]; - выдаёт egui::Color32
-        // self[(x, y)] = color; - устанавлиает цвет пикселя
+    pub fn draw_smooth_line_simple(&mut self, pos1: Pos2, pos2: Pos2, color: Color32) {
+        let mut x1 = pos1.x;
+        let mut y1 = pos1.y;
+        let mut x2 = pos2.x;
+        let mut y2 = pos2.y;
+
+        let steep = (y2 - y1).abs() > (x2 - x1).abs();
+        if steep {
+            std::mem::swap(&mut x1, &mut y1);
+            std::mem::swap(&mut x2, &mut y2);
+        }
+        if x1 > x2 {
+            std::mem::swap(&mut x1, &mut x2);
+            std::mem::swap(&mut y1, &mut y2);
+        }
+
+        let dx = x2 - x1;
+        let dy = y2 - y1;
+        let gradient = dy / dx;
+
+        let mut intery = y1 + gradient;
+
+        for x in (x1 as i32)..=(x2 as i32) {
+            let y_floor = intery as i32;
+            let intensity1 = 1.0 - (intery - y_floor as f32);
+            let intensity2 = intery - y_floor as f32;
+
+            if steep {
+                self.set_pixel(y_floor, x, color, intensity1);
+                self.set_pixel(y_floor + 1, x, color, intensity2);
+            } else {
+                self.set_pixel(x, y_floor, color, intensity1);
+                self.set_pixel(x, y_floor + 1, color, intensity2);
+            }
+
+            intery += gradient;
+        }
+    }
+
+    fn set_pixel(&mut self, x: i32, y: i32, color: Color32, intensity: f32) {
+        if x >= 0 && y >= 0 {
+            let r = (color.r() as f32 * intensity) as u8;
+            let g = (color.g() as f32 * intensity) as u8;
+            let b = (color.b() as f32 * intensity) as u8;
+            self[(x as usize, y as usize)] = Color32::from_rgb(r, g, b);
+        }
     }
 }
 
