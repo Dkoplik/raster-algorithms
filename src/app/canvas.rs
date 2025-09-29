@@ -238,39 +238,43 @@ impl Canvas {
     /// pos2 - вторая точка линии;
     /// color - цвет линии;
     pub fn draw_sharp_line(&mut self, pos1: Pos2, pos2: Pos2, color: Color32) {
-        let x0 = pos1.x as i32;
-        let y0 = pos1.y as i32;
-        let x1 = pos2.x as i32;
-        let y1 = pos2.y as i32;
+        let mut x0 = pos1.x as i32;
+        let mut y0 = pos1.y as i32;
+        let mut x1 = pos2.x as i32;
+        let mut y1 = pos2.y as i32;
 
-        let deltax = (x1 - x0).abs();
+        let steep = (y1 - y0).abs() > (x1 - x0).abs();
+
+        if steep {
+            std::mem::swap(&mut x0, &mut y0);
+            std::mem::swap(&mut x1, &mut y1);
+        }
+
+        if x0 > x1 {
+            std::mem::swap(&mut x0, &mut x1);
+            std::mem::swap(&mut y0, &mut y1);
+        }
+
+        let deltax = x1 - x0;
         let deltay = (y1 - y0).abs();
 
         let mut error = 0;
         let deltaerr = deltay + 1;
         let mut y = y0;
+        let diry = if y1 > y0 { 1 } else { -1 };
 
-        let mut diry = y1 - y0;
-        if diry > 0 {
-            diry = 1;
-        } else if diry < 0 {
-            diry = -1;
-        } else {
-            diry = 0;
-        }
-
-        let step_x = if x0 <= x1 { 1 } else { -1 };
-        let mut x = x0;
-
-        while x != x1 + step_x {
-            self[(x as usize, y as usize)] = color;
+        for x in x0..=x1 {
+            if steep {
+                self[(y as usize, x as usize)] = color;
+            } else {
+                self[(x as usize, y as usize)] = color;
+            }
 
             error += deltaerr;
             if error >= (deltax + 1) {
                 y += diry;
                 error -= deltax + 1;
             }
-            x += step_x;
         }
     }
 
