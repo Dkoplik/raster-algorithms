@@ -33,7 +33,7 @@ impl Canvas {
     #[inline]
     /// Проверить границы полотна.
     fn check_bounds(&self, x: usize, y: usize) -> bool {
-        x < self.width && y < self.height
+        x < self.width && y < self.height && x > 0 && y > 0
     }
 
     /// Преобразовать холст в ColorImage для дальнейшего использования в egui.
@@ -95,12 +95,10 @@ impl Canvas {
         while self.check_bounds(left, y) && self[(left, y)] == old_color {
             left -= 1;
         }
-        left += 1;
 
         while self.check_bounds(right, y) && self[(right, y)] == old_color {
             right += 1;
         }
-        right -= 1;
 
         (left, right)
     }
@@ -151,90 +149,18 @@ impl Canvas {
                 }
             }
 
-            match connectivity {
-                Connectivity::FOUR => {
-                    for i in left..=right {
-                        if y > 0 {
-                            self.check_and_push(i, y - 1, old_color, &mut stack);
-                        }
-                        self.check_and_push(i, y + 1, old_color, &mut stack);
-                    }
-                }
-                Connectivity::EIGHT => {
-                    for i in left..=right {
-                        if y > 0 {
-                            self.check_and_push(i, y - 1, old_color, &mut stack);
-                        }
-                        self.check_and_push(i, y + 1, old_color, &mut stack);
-                    }
-
-                    if y > 0 {
-                        if left > 0 {
-                            self.check_and_push(left - 1, y - 1, old_color, &mut stack);
-                        }
-                        self.check_and_push(right + 1, y - 1, old_color, &mut stack);
-                    }
-                    if left > 0 {
-                        self.check_and_push(left - 1, y + 1, old_color, &mut stack);
-                    }
-                    self.check_and_push(right + 1, y + 1, old_color, &mut stack);
-                }
-            }
-        }
-        let start_x = pos.x as usize;
-        let start_y = pos.y as usize;
-
-        if !self.check_bounds(start_x, start_y) {
-            return;
-        }
-
-        let old_color = self[(start_x, start_y)];
-        if old_color == color {
-            return;
-        }
-
-        let mut stack = VecDeque::new();
-        stack.push_back((start_x, start_y));
-
-        while let Some((x, y)) = stack.pop_front() {
-            if !self.check_bounds(x, y) || self[(x, y)] != old_color {
-                continue;
-            }
-
-            let (left, right) = self.find_line_bounds(x, y, old_color);
-
             for i in left..=right {
-                if self.check_bounds(i, y) {
-                    self[(i, y)] = color;
-                }
+                self.check_and_push(i, y - 1, old_color, &mut stack);
+                self.check_and_push(i, y + 1, old_color, &mut stack);
             }
-
             match connectivity {
-                Connectivity::FOUR => {
-                    for i in left..=right {
-                        if y > 0 {
-                            self.check_and_push(i, y - 1, old_color, &mut stack);
-                        }
-                        self.check_and_push(i, y + 1, old_color, &mut stack);
-                    }
-                }
+                Connectivity::FOUR => { }
                 Connectivity::EIGHT => {
-                    for i in left..=right {
-                        if y > 0 {
-                            self.check_and_push(i, y - 1, old_color, &mut stack);
-                        }
-                        self.check_and_push(i, y + 1, old_color, &mut stack);
-                    }
-
-                    if y > 0 {
-                        if left > 0 {
-                            self.check_and_push(left - 1, y - 1, old_color, &mut stack);
-                        }
-                        self.check_and_push(right + 1, y - 1, old_color, &mut stack);
-                    }
-                    if left > 0 {
+                    if left > 0{
+                        self.check_and_push(left - 1, y - 1, old_color, &mut stack);
                         self.check_and_push(left - 1, y + 1, old_color, &mut stack);
                     }
+                    self.check_and_push(right + 1, y - 1, old_color, &mut stack);
                     self.check_and_push(right + 1, y + 1, old_color, &mut stack);
                 }
             }
