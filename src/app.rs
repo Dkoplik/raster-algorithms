@@ -1,5 +1,7 @@
 pub mod canvas;
 use canvas::Canvas;
+use egui::Color32;
+use image::Pixel;
 
 #[derive(Default)]
 enum Instrument {
@@ -84,18 +86,17 @@ impl ColorsApp {
                 if self.points.len() == 1 {
                     let prev_point = self.points.pop().unwrap();
                     let color = self.cur_color;
-                    self.canvas_mut(&response.ctx).draw_sharp_line(prev_point, pos, color);
+                    self.canvas_mut(&response.ctx)
+                        .draw_sharp_line(prev_point, pos, color);
                     self.points.push(pos);
-                }
-                else {
+                } else {
                     self.points.push(pos);
                 }
 
                 #[cfg(debug_assertions)]
                 println!("нарисован пиксель {:#?} в {:#?}", self.cur_color, pos);
             }
-        }
-        else if response.drag_stopped() {
+        } else if response.drag_stopped() {
             self.points.clear();
         }
     }
@@ -147,7 +148,8 @@ impl ColorsApp {
             if let Some(pos) = self.coord_screen_to_canvas(pointer_pos, canvas_rect) {
                 let boudary = self.canvas_mut(&response.ctx).trace_boundary(pos);
                 let color = self.cur_color;
-                self.canvas_mut(&response.ctx).draw_boundary(&boudary, color);
+                self.canvas_mut(&response.ctx)
+                    .draw_boundary(&boudary, color);
 
                 #[cfg(debug_assertions)]
                 println!("выделение границы в {:#?}", pos);
@@ -330,8 +332,13 @@ impl eframe::App for ColorsApp {
                     }
 
                     // Загрузить картинку (для заливки картинкой)
-                    if ui.button("Load Image").clicked() {
-                        self.load_image(ctx);
+                    if ui.button("Load Bucket Image").clicked() {
+                        self.load_image();
+                    }
+
+                    // Загрузить картинку для холста
+                    if ui.button("Load Canvas").clicked() {
+                        self.load_canvas(ctx);
                     }
 
                     if ui.button("Quit").clicked() {
@@ -487,8 +494,8 @@ impl ColorsApp {
         self.colors.clear();
     }
 
-    /// Загрузить файл с картинкой из файловой системы
-    fn load_image(&mut self, ctx: &egui::Context) {
+    /// Загрузить файл с картинкой из файловой системы для заливки
+    fn load_image(&mut self) {
         let path = rfd::FileDialog::new()
             .add_filter("Images", &["png", "jpg", "jpeg", "bmp", "tga", "tiff"])
             .pick_file();
@@ -500,5 +507,33 @@ impl ColorsApp {
                 self.loaded_image = Some(egui::ColorImage::from_rgb(image_size, &image_buf));
             }
         }
+    }
+
+    /// Загрузить файл с картинкой из файловой системы для холста
+    fn load_canvas(&mut self, ctx: &egui::Context) {
+        let path = rfd::FileDialog::new()
+            .add_filter("Images", &["png", "jpg", "jpeg", "bmp", "tga", "tiff"])
+            .pick_file();
+
+        if let Some(path) = path {
+            if let Ok(img) = image::open(&path) {
+                let image_size = [img.width() as usize, img.height() as usize];
+                let image = img.into_rgba8();
+
+                self.canvas = Canvas::new(image_size[0], image_size[1]);
+                for i in 0..image_size[0] {
+                    for j in 0..image_size[1] {
+                        let channels = image.get_pixel(i as u32, j as u32).channels();
+                        self.canvas_mut(ctx)[(i, j)] = Color32::from_rgba_premultiplied(
+                            channels[0],
+                            channels[1],
+                            channels[2],
+                            channels[3],
+                        );
+                    }
+                }
+            }
+        }
+        self.update_texture(ctx);
     }
 }
