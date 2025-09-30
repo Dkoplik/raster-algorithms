@@ -131,9 +131,12 @@ impl ColorsApp {
             && let Some(pointer_pos) = response.hover_pos()
         {
             if let Some(pos) = self.coord_screen_to_canvas(pointer_pos, canvas_rect) {
-                // TODO
-                // self.canvas_mut(&response.ctx)
-                // println!("выделение границы в {:#?}", pos);
+                let boudary = self.canvas_mut(&response.ctx).trace_boundary(pos);
+                let color = self.cur_color;
+                self.canvas_mut(&response.ctx).draw_boundary(&boudary, color);
+
+                #[cfg(debug_assertions)]
+                println!("выделение границы в {:#?}", pos);
             }
         }
     }
