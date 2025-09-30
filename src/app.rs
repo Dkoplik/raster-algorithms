@@ -79,6 +79,8 @@ impl ColorsApp {
         {
             if let Some(pos) = self.coord_screen_to_canvas(pointer_pos, canvas_rect) {
                 self.canvas_mut(&response.ctx)[(pos.x as usize, pos.y as usize)] = self.cur_color;
+
+                #[cfg(debug_assertions)]
                 println!("нарисован пиксель {:#?} в {:#?}", self.cur_color, pos);
             }
         }
@@ -96,6 +98,8 @@ impl ColorsApp {
                     color,
                     canvas::Connectivity::EIGHT,
                 );
+
+                #[cfg(debug_assertions)]
                 println!("заливка {:#?} в {:#?}", self.cur_color, pos);
             }
         }
@@ -114,6 +118,8 @@ impl ColorsApp {
                     &img,
                     canvas::Connectivity::EIGHT,
                 );
+
+                #[cfg(debug_assertions)]
                 println!("заливка картинкой в {:#?}", pos);
             }
         }
@@ -147,6 +153,8 @@ impl ColorsApp {
                 let color = self.cur_color;
                 self.canvas_mut(&response.ctx)
                     .draw_sharp_line(prev_pos, pos, color);
+
+                #[cfg(debug_assertions)]
                 println!("нарисована линия цвета {:#?}", self.cur_color);
             }
         }
@@ -154,12 +162,14 @@ impl ColorsApp {
 
     /// Обрабатывает рисование размытой линии
     fn handle_smooth_line(&mut self, canvas_rect: egui::Rect, response: &egui::Response) {
-        if response.dragged()
+        if response.clicked()
             && let Some(pointer_pos) = response.hover_pos()
         {
             if let Some(pos) = self.coord_screen_to_canvas(pointer_pos, canvas_rect) {
                 if self.points.len() < 1 {
                     self.points.push(pos);
+
+                    #[cfg(debug_assertions)]
                     println!("поставлена точка линии в {:#?}", pos);
                     return;
                 }
@@ -167,6 +177,8 @@ impl ColorsApp {
                 let color = self.cur_color;
                 self.canvas_mut(&response.ctx)
                     .draw_smooth_line_simple(prev_pos, pos, color);
+
+                #[cfg(debug_assertions)]
                 println!("нарисована линия цвета {:#?}", self.cur_color);
             }
         }
@@ -174,13 +186,15 @@ impl ColorsApp {
 
     /// Обрабатывает рисование градиентного треугольника
     fn handle_triangle(&mut self, canvas_rect: egui::Rect, response: &egui::Response) {
-        if response.dragged()
+        if response.clicked()
             && let Some(pointer_pos) = response.hover_pos()
         {
             if let Some(pos) = self.coord_screen_to_canvas(pointer_pos, canvas_rect) {
                 if self.points.len() < 2 {
                     self.points.push(pos);
                     self.colors.push(self.cur_color);
+
+                    #[cfg(debug_assertions)]
                     println!(
                         "поставлена точка треугольника {:#?} в {:#?}",
                         self.cur_color, pos
@@ -196,6 +210,8 @@ impl ColorsApp {
                 let color = self.cur_color;
                 self.canvas_mut(&response.ctx)
                     .draw_gradient_triangle(pos1, pos2, pos, color1, color2, color);
+
+                #[cfg(debug_assertions)]
                 println!("нарисован треугольник");
             }
         }
@@ -225,7 +241,7 @@ impl ColorsApp {
 
         let (canvas_response, painter) = ui.allocate_painter(
             egui::Vec2::new(display_width, display_height),
-            egui::Sense::drag(),
+            egui::Sense::click_and_drag(),
         );
         return (canvas_response, painter);
     }
