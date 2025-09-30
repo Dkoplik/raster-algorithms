@@ -165,9 +165,12 @@ impl ColorsApp {
             if let Some(pos) = self.coord_screen_to_canvas(pointer_pos, canvas_rect) {
                 if self.points.len() < 1 {
                     self.points.push(pos);
+
+                    #[cfg(debug_assertions)]
                     println!("поставлена точка линии в {:#?}", pos);
                     return;
                 }
+
                 let prev_pos = self.points.pop().unwrap();
                 let color = self.cur_color;
                 self.canvas_mut(&response.ctx)
