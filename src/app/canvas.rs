@@ -118,37 +118,6 @@ impl Canvas {
         }
     }
 
-    /// Вспомогательная функция для нахождения границ линии
-    fn find_line_bounds(&self, x: usize, y: usize, old_color: Color32) -> (usize, usize) {
-        let mut left = x;
-        let mut right = x;
-
-        while self.check_bounds(left, y) && self[(left, y)] == old_color {
-            left -= 1;
-        }
-        left += 1;
-
-        while self.check_bounds(right, y) && self[(right, y)] == old_color {
-            right += 1;
-        }
-        right -= 1;
-
-        (left, right)
-    }
-
-    /// Вспомогательная функция для проверки и добавления точки в стек
-    fn check_and_push(
-        &self,
-        x: usize,
-        y: usize,
-        old_color: Color32,
-        stack: &mut VecDeque<(usize, usize)>,
-    ) {
-        if self.check_bounds(x, y) && self[(x, y)] == old_color {
-            stack.push_back((x, y));
-        }
-    }
-
     /// Рекурсивная заливка изображения.
     /// pos - позиция, в которой применяется заливка;
     /// color - цвет заливки;

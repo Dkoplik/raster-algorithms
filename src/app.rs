@@ -141,7 +141,6 @@ impl ColorsApp {
                 if self.points.len() < 1 {
                     self.points.push(pos);
                     println!("поставлена точка линии в {:#?}", pos);
-                    self.handle_pencil(canvas_rect, response); // нарисовать в этом же месте точку
                     return;
                 }
                 let prev_pos = self.points.pop().unwrap();
@@ -162,13 +161,12 @@ impl ColorsApp {
                 if self.points.len() < 1 {
                     self.points.push(pos);
                     println!("поставлена точка линии в {:#?}", pos);
-                    self.handle_pencil(canvas_rect, response); // нарисовать в этом же месте точку
                     return;
                 }
                 let prev_pos = self.points.pop().unwrap();
                 let color = self.cur_color;
                 self.canvas_mut(&response.ctx)
-                    .draw_smooth_line(prev_pos, pos, color);
+                    .draw_smooth_line_simple(prev_pos, pos, color);
                 println!("нарисована линия цвета {:#?}", self.cur_color);
             }
         }
@@ -187,7 +185,6 @@ impl ColorsApp {
                         "поставлена точка треугольника {:#?} в {:#?}",
                         self.cur_color, pos
                     );
-                    self.handle_pencil(canvas_rect, response); // нарисовать в этом же месте точку
                     return;
                 }
                 let pos1 = self.points.pop().unwrap();
