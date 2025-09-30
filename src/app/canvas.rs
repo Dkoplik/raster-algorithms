@@ -4,12 +4,23 @@ use egui::{Color32, ColorImage, Pos2, Vec2};
 
 use std::collections::VecDeque;
 
+#[derive(Default, PartialEq, Clone, Copy)]
 /// Вариант связности, нужен для заливки.
 pub enum Connectivity {
     /// 4-х связная заливка
     FOUR,
+    #[default]
     /// 8-ми связная заливка
     EIGHT,
+}
+
+impl Connectivity {
+    pub fn get_name(&self) -> String {
+        match self {
+            Connectivity::FOUR => String::from("4-х связная"),
+            Connectivity::EIGHT => String::from("8-ми связная"),
+        }
+    }
 }
 
 // =============== Реализация холста ===============
@@ -100,8 +111,8 @@ impl Canvas {
         while self.check_bounds(right, y) && self[(right, y)] == old_color {
             right += 1;
         }
-        right -=1;
-        
+        right -= 1;
+
         (left, right)
     }
 
@@ -156,9 +167,9 @@ impl Canvas {
                 self.check_and_push(i, y + 1, old_color, &mut stack);
             }
             match connectivity {
-                Connectivity::FOUR => { }
+                Connectivity::FOUR => {}
                 Connectivity::EIGHT => {
-                    if left > 0{
+                    if left > 0 {
                         self.check_and_push(left - 1, y - 1, old_color, &mut stack);
                         self.check_and_push(left - 1, y + 1, old_color, &mut stack);
                     }

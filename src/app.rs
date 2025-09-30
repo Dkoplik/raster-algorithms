@@ -42,6 +42,7 @@ pub struct ColorsApp {
     colors: Vec<egui::Color32>,
     cur_instrument: Instrument,
     loaded_image: Option<egui::ColorImage>,
+    connectivity: canvas::Connectivity,
 
     // создание нового холста
     show_new_canvas_popup: bool,
@@ -76,7 +77,7 @@ impl ColorsApp {
 impl ColorsApp {
     /// Обрабатывает рисование карандашом на холсте
     fn handle_pencil(&mut self, canvas_rect: egui::Rect, response: &egui::Response) {
-        if response.dragged()
+        if (response.dragged() || response.clicked())
             && let Some(pointer_pos) = response.hover_pos()
         {
             if let Some(pos) = self.coord_screen_to_canvas(pointer_pos, canvas_rect) {
@@ -108,11 +109,9 @@ impl ColorsApp {
         {
             if let Some(pos) = self.coord_screen_to_canvas(pointer_pos, canvas_rect) {
                 let color = self.cur_color;
-                self.canvas_mut(&response.ctx).fill_with_color(
-                    pos,
-                    color,
-                    canvas::Connectivity::EIGHT,
-                );
+                let connect = self.connectivity;
+                self.canvas_mut(&response.ctx)
+                    .fill_with_color(pos, color, connect);
 
                 #[cfg(debug_assertions)]
                 println!("заливка {:#?} в {:#?}", self.cur_color, pos);
@@ -128,11 +127,9 @@ impl ColorsApp {
             if let Some(pos) = self.coord_screen_to_canvas(pointer_pos, canvas_rect)
                 && let Some(img) = self.loaded_image.clone()
             {
-                self.canvas_mut(&response.ctx).fill_with_img(
-                    pos,
-                    &img,
-                    canvas::Connectivity::EIGHT,
-                );
+                let connect = self.connectivity;
+                self.canvas_mut(&response.ctx)
+                    .fill_with_img(pos, &img, connect);
 
                 #[cfg(debug_assertions)]
                 println!("заливка картинкой в {:#?}", pos);
@@ -361,6 +358,26 @@ impl eframe::App for ColorsApp {
                         &mut self.cur_color,
                         egui::color_picker::Alpha::Opaque,
                     );
+
+                    ui.separator();
+
+                    ui.horizontal(|ui| {
+                        ui.label("связность:");
+                        egui::ComboBox::from_id_salt("connectivity_combo_box")
+                            .selected_text(format!("{:?}", self.connectivity.get_name()))
+                            .show_ui(ui, |ui| {
+                                ui.selectable_value(
+                                    &mut self.connectivity,
+                                    canvas::Connectivity::FOUR,
+                                    "4-х связная",
+                                );
+                                ui.selectable_value(
+                                    &mut self.connectivity,
+                                    canvas::Connectivity::EIGHT,
+                                    "8-ми связная",
+                                );
+                            });
+                    });
 
                     ui.separator();
 
