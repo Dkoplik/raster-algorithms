@@ -310,8 +310,6 @@ impl Canvas {
         }
     }
 
-    
-    
     /// Выделение границы связной области
     /// start_pos - начальная точка на границе;
     /// boundary_color - цвет границы;
@@ -320,74 +318,72 @@ impl Canvas {
         let mut boundary_points = Vec::new();
         let start_x = start_pos.x as usize;
         let start_y = start_pos.y as usize;
-        
+
         if !self.check_bounds(start_x, start_y) {
             return boundary_points;
         }
 
         let boundary_color = self[(start_x, start_y)];
-        
+
         let mut current_x = start_x;
         let mut current_y = start_y;
-        
+
         let mut prev_direction = 0;
         let directions: [(i32, i32); 8] = [
-        (1, 0),   // вправо
-        (1, -1),  // вправо-вверх
-        (0, -1),  // вверх
-        (-1, -1), // влево-вверх
-        (-1, 0),  // влево
-        (-1, 1),  // влево-вниз
-        (0, 1),   // вниз
-        (1, 1),   // вправо-вниз
-    ];
-        
+            (1, 0),   // вправо
+            (1, -1),  // вправо-вверх
+            (0, -1),  // вверх
+            (-1, -1), // влево-вверх
+            (-1, 0),  // влево
+            (-1, 1),  // влево-вниз
+            (0, 1),   // вниз
+            (1, 1),   // вправо-вниз
+        ];
+
         loop {
             boundary_points.push(Pos2::new(current_x as f32, current_y as f32));
-            
+
             let mut found_next = false;
             prev_direction = (prev_direction + 6) % 8;
-            
-           for offset in 0..8 {
-            let direction_index = (prev_direction + offset) % 8;
-            let (dx, dy) = directions[direction_index];
-            
-            let next_x = if dx >= 0 {
-                current_x + dx as usize
-            } else {
-                current_x - (-dx) as usize
-            };
-            
-            let next_y = if dy >= 0 {
-                current_y + dy as usize
-            } else {
-                current_y - (-dy) as usize
-            };
-            
-            if self[(next_x, next_y)] == boundary_color &&
-                self.check_bounds(next_x, next_y)
-                {
-                current_x = next_x;
-                current_y = next_y;
-                prev_direction = direction_index;
-                found_next = true;
-                break;
+
+            for offset in 0..8 {
+                let direction_index = (prev_direction + offset) % 8;
+                let (dx, dy) = directions[direction_index];
+
+                let next_x = if dx >= 0 {
+                    current_x + dx as usize
+                } else {
+                    current_x - (-dx) as usize
+                };
+
+                let next_y = if dy >= 0 {
+                    current_y + dy as usize
+                } else {
+                    current_y - (-dy) as usize
+                };
+
+                if self[(next_x, next_y)] == boundary_color && self.check_bounds(next_x, next_y) {
+                    current_x = next_x;
+                    current_y = next_y;
+                    prev_direction = direction_index;
+                    found_next = true;
+                    break;
+                }
             }
-        }
-            
+
             if current_x == start_x && current_y == start_y {
                 break;
             }
-            
+
             if !found_next {
                 break;
             }
 
             if boundary_points.len() > self.width * self.height {
-            break;
+                break;
+            }
         }
-        }
-        
+
         boundary_points
     }
 
@@ -495,10 +491,25 @@ impl Canvas {
 
     fn set_pixel(&mut self, x: i32, y: i32, color: Color32, intensity: f32) {
         if x >= 0 && y >= 0 {
-            let r = (color.r() as f32 * intensity) as u8;
-            let g = (color.g() as f32 * intensity) as u8;
-            let b = (color.b() as f32 * intensity) as u8;
-            self[(x as usize, y as usize)] = Color32::from_rgb(r, g, b);
+            let background = self[(x as usize, y as usize)];
+
+            let bg_r = background.r() as f32;
+            let bg_g = background.g() as f32;
+            let bg_b = background.b() as f32;
+            let bg_a = background.a() as f32;
+
+            let fg_r = color.r() as f32;
+            let fg_g = color.g() as f32;
+            let fg_b = color.b() as f32;
+            let fg_a = color.a() as f32;
+
+            let result_r = (bg_r * (1.0 - intensity) + fg_r * intensity) as u8;
+            let result_g = (bg_g * (1.0 - intensity) + fg_g * intensity) as u8;
+            let result_b = (bg_b * (1.0 - intensity) + fg_b * intensity) as u8;
+            let result_a = (bg_a * (1.0 - intensity) + fg_a * intensity) as u8;
+
+            self[(x as usize, y as usize)] =
+                Color32::from_rgba_premultiplied(result_r, result_g, result_b, result_a);
         }
     }
 }
