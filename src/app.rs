@@ -80,9 +80,23 @@ impl ColorsApp {
             if let Some(pos) = self.coord_screen_to_canvas(pointer_pos, canvas_rect) {
                 self.canvas_mut(&response.ctx)[(pos.x as usize, pos.y as usize)] = self.cur_color;
 
+                // обработка разрывов
+                if self.points.len() == 1 {
+                    let prev_point = self.points.pop().unwrap();
+                    let color = self.cur_color;
+                    self.canvas_mut(&response.ctx).draw_sharp_line(prev_point, pos, color);
+                    self.points.push(pos);
+                }
+                else {
+                    self.points.push(pos);
+                }
+
                 #[cfg(debug_assertions)]
                 println!("нарисован пиксель {:#?} в {:#?}", self.cur_color, pos);
             }
+        }
+        else if response.drag_stopped() {
+            self.points.clear();
         }
     }
 
