@@ -95,11 +95,13 @@ impl Canvas {
         while self.check_bounds(left, y) && self[(left, y)] == old_color {
             left -= 1;
         }
+        left += 1;
 
         while self.check_bounds(right, y) && self[(right, y)] == old_color {
             right += 1;
         }
-
+        right -=1;
+        
         (left, right)
     }
 
