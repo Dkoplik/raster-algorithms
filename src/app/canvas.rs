@@ -195,43 +195,33 @@ impl Canvas {
 
             let (left, right) = self.find_line_bounds(x, y, old_color);
 
-            for i in left..=right {
-                if self.check_bounds(i, y) {
-                    let img_x = (i - start_x).rem_euclid(img_width);
-                    let img_y = (y - start_y).rem_euclid(img_height);
+            let mut im_y = (y as i32 - start_y as i32) as i32;
+            while im_y <= 0  { im_y += img_height as i32; }
 
-                    if img_x < img_width && img_y < img_height {
-                        self[(i, y)] = img[(img_x, img_y)];
-                    }
+            for i in left..=right {
+                let mut im_x = i as i32 - start_x as i32;
+                while im_x <= 0 { im_x += img_width as i32; }
+
+                let img_x = (im_x as usize).rem_euclid(img_width);
+                let img_y = (im_y as usize).rem_euclid(img_height);
+
+                if img_x < img_width && img_y < img_height {
+                    self[(i, y)] = img[(img_x, img_y)];
                 }
             }
 
+            for i in left..=right {
+                self.check_and_push(i, y - 1, old_color, &mut stack);
+                self.check_and_push(i, y + 1, old_color, &mut stack);
+            }
             match connectivity {
-                Connectivity::FOUR => {
-                    for i in left..=right {
-                        if y > 0 {
-                            self.check_and_push(i, y - 1, old_color, &mut stack);
-                        }
-                        self.check_and_push(i, y + 1, old_color, &mut stack);
-                    }
-                }
+                Connectivity::FOUR => { }
                 Connectivity::EIGHT => {
-                    for i in left..=right {
-                        if y > 0 {
-                            self.check_and_push(i, y - 1, old_color, &mut stack);
-                        }
-                        self.check_and_push(i, y + 1, old_color, &mut stack);
-                    }
-
-                    if y > 0 {
-                        if left > 0 {
-                            self.check_and_push(left - 1, y - 1, old_color, &mut stack);
-                        }
-                        self.check_and_push(right + 1, y - 1, old_color, &mut stack);
-                    }
-                    if left > 0 {
+                    if left > 0{
+                        self.check_and_push(left - 1, y - 1, old_color, &mut stack);
                         self.check_and_push(left - 1, y + 1, old_color, &mut stack);
                     }
+                    self.check_and_push(right + 1, y - 1, old_color, &mut stack);
                     self.check_and_push(right + 1, y + 1, old_color, &mut stack);
                 }
             }
