@@ -1,6 +1,6 @@
 use std::ops::{Index, IndexMut};
 
-use egui::{Color32, ColorImage, Pos2};
+use egui::{Color32, ColorImage, Pos2, Vec2};
 
 use std::collections::VecDeque;
 
@@ -34,6 +34,28 @@ impl Canvas {
     /// Проверить границы полотна.
     fn check_bounds(&self, x: usize, y: usize) -> bool {
         x < self.width && y < self.height
+    }
+
+    /// Преобразовать холст в ColorImage для дальнейшего использования в egui.
+    pub fn to_color_image(&self) -> ColorImage {
+        ColorImage {
+            size: self.size(),
+            source_size: Vec2 {
+                x: self.width as f32,
+                y: self.height as f32,
+            },
+            pixels: self.pixels.clone(),
+        }
+    }
+
+    /// Размеры холста вида [ширина, высота].
+    pub fn size(&self) -> [usize; 2] {
+        [self.width, self.height]
+    }
+
+    /// Заполнить весь холст указанным цветом
+    pub fn clear(&mut self, color: Color32) {
+        self.pixels.fill(color);
     }
 }
 
@@ -96,11 +118,100 @@ impl Canvas {
         }
     }
 
+    /// Вспомогательная функция для нахождения границ линии
+    fn find_line_bounds(&self, x: usize, y: usize, old_color: Color32) -> (usize, usize) {
+        let mut left = x;
+        let mut right = x;
+
+        while self.check_bounds(left, y) && self[(left, y)] == old_color {
+            left -= 1;
+        }
+        left += 1;
+
+        while self.check_bounds(right, y) && self[(right, y)] == old_color {
+            right += 1;
+        }
+        right -= 1;
+
+        (left, right)
+    }
+
+    /// Вспомогательная функция для проверки и добавления точки в стек
+    fn check_and_push(
+        &self,
+        x: usize,
+        y: usize,
+        old_color: Color32,
+        stack: &mut VecDeque<(usize, usize)>,
+    ) {
+        if self.check_bounds(x, y) && self[(x, y)] == old_color {
+            stack.push_back((x, y));
+        }
+    }
+
     /// Рекурсивная заливка изображения.
     /// pos - позиция, в которой применяется заливка;
     /// color - цвет заливки;
     /// connectivity - тип заливки (4-х или 8-ми связная);
     pub fn fill_with_color(&mut self, pos: Pos2, color: Color32, connectivity: Connectivity) {
+        let start_x = pos.x as usize;
+        let start_y = pos.y as usize;
+
+        if !self.check_bounds(start_x, start_y) {
+            return;
+        }
+
+        let old_color = self[(start_x, start_y)];
+        if old_color == color {
+            return;
+        }
+
+        let mut stack = VecDeque::new();
+        stack.push_back((start_x, start_y));
+
+        while let Some((x, y)) = stack.pop_front() {
+            if !self.check_bounds(x, y) || self[(x, y)] != old_color {
+                continue;
+            }
+
+            let (left, right) = self.find_line_bounds(x, y, old_color);
+
+            for i in left..=right {
+                if self.check_bounds(i, y) {
+                    self[(i, y)] = color;
+                }
+            }
+
+            match connectivity {
+                Connectivity::FOUR => {
+                    for i in left..=right {
+                        if y > 0 {
+                            self.check_and_push(i, y - 1, old_color, &mut stack);
+                        }
+                        self.check_and_push(i, y + 1, old_color, &mut stack);
+                    }
+                }
+                Connectivity::EIGHT => {
+                    for i in left..=right {
+                        if y > 0 {
+                            self.check_and_push(i, y - 1, old_color, &mut stack);
+                        }
+                        self.check_and_push(i, y + 1, old_color, &mut stack);
+                    }
+
+                    if y > 0 {
+                        if left > 0 {
+                            self.check_and_push(left - 1, y - 1, old_color, &mut stack);
+                        }
+                        self.check_and_push(right + 1, y - 1, old_color, &mut stack);
+                    }
+                    if left > 0 {
+                        self.check_and_push(left - 1, y + 1, old_color, &mut stack);
+                    }
+                    self.check_and_push(right + 1, y + 1, old_color, &mut stack);
+                }
+            }
+        }
         let start_x = pos.x as usize;
         let start_y = pos.y as usize;
 
