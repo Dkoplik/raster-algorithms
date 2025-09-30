@@ -516,9 +516,51 @@ impl Canvas {
 
 // Задание 3 (растеризация треугольника с градиентом)
 impl Canvas {
-    // Сюда можно приватные вспомогательные методы, если нужно
+    /// Вычисление барицентрических координат через систему уравнений
+    fn compute_barycentric_coords(
+        &self,
+        p: Pos2,
+        a: Pos2,
+        b: Pos2,
+        c: Pos2,
+    ) -> Option<(f32, f32, f32)> {
+        let det = (b.y - c.y) * (a.x - c.x) + (c.x - b.x) * (a.y - c.y);
 
-    /// Рисование линии алгоритмом Ву.
+        // Если определитель близок к нулю, треугольник вырожденный
+        if det.abs() < 1e-10 {
+            return None;
+        }
+
+        let alpha = ((b.y - c.y) * (p.x - c.x) + (c.x - b.x) * (p.y - c.y)) / det;
+        let beta = ((c.y - a.y) * (p.x - c.x) + (a.x - c.x) * (p.y - c.y)) / det;
+        let gamma = 1.0 - alpha - beta;
+
+        Some((alpha, beta, gamma))
+    }
+
+    /// Интерполяция цвета по барицентрическим координатам
+    fn interpolate_color(
+        &self,
+        alpha: f32,
+        beta: f32,
+        gamma: f32,
+        color1: Color32,
+        color2: Color32,
+        color3: Color32,
+    ) -> Color32 {
+        let r = (alpha * color1.r() as f32 + beta * color2.r() as f32 + gamma * color3.r() as f32)
+            .round() as u8;
+        let g = (alpha * color1.g() as f32 + beta * color2.g() as f32 + gamma * color3.g() as f32)
+            .round() as u8;
+        let b = (alpha * color1.b() as f32 + beta * color2.b() as f32 + gamma * color3.b() as f32)
+            .round() as u8;
+        let a = (alpha * color1.a() as f32 + beta * color2.a() as f32 + gamma * color3.a() as f32)
+            .round() as u8;
+
+        Color32::from_rgba_premultiplied(r, g, b, a)
+    }
+
+    /// Градиентная растеризация треугольника через барицентрические координаты.
     /// pos[1..3] - 3 точки треугольника;
     /// color[1..3] - цвета соответствующих точек;
     pub fn draw_gradient_triangle(
@@ -530,9 +572,34 @@ impl Canvas {
         color2: Color32,
         color3: Color32,
     ) {
-        // TODO
-        // для операций над холстом использовать эти методы:
-        // self[(x, y)]; - выдаёт egui::Color32
-        // self[(x, y)] = color; - устанавлиает цвет пикселя
+        // ограничивающий прямоугольник
+        let min_x = pos1.x.min(pos2.x.min(pos3.x)).floor() as usize;
+        let min_y = pos1.y.min(pos2.y.min(pos3.y)).floor() as usize;
+        let max_x = pos1.x.max(pos2.x.max(pos3.x)).ceil() as usize;
+        let max_y = pos1.y.max(pos2.y.max(pos3.y)).ceil() as usize;
+
+        // цикл по пикселям ограничевающего прямогольника
+        for y in min_y..=max_y {
+            for x in min_x..=max_x {
+                if x >= self.width || y >= self.height {
+                    continue;
+                }
+
+                let pixel_pos = Pos2::new(x as f32, y as f32);
+
+                // барицентрические координаты
+                if let Some((alpha, beta, gamma)) =
+                    self.compute_barycentric_coords(pixel_pos, pos1, pos2, pos3)
+                {
+                    // пиксель внутри треугольника
+                    if alpha >= 0.0 && beta >= 0.0 && gamma >= 0.0 {
+                        // интерполяция цвета
+                        let color =
+                            self.interpolate_color(alpha, beta, gamma, color1, color2, color3);
+                        self[(x, y)] = color;
+                    }
+                }
+            }
+        }
     }
 }
