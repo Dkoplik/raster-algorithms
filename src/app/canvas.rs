@@ -207,11 +207,15 @@ impl Canvas {
             let (left, right) = self.find_line_bounds(x, y, old_color);
 
             let mut im_y = (y as i32 - start_y as i32) as i32;
-            while im_y <= 0  { im_y += img_height as i32; }
+            while im_y <= 0 {
+                im_y += img_height as i32;
+            }
 
             for i in left..=right {
                 let mut im_x = i as i32 - start_x as i32;
-                while im_x <= 0 { im_x += img_width as i32; }
+                while im_x <= 0 {
+                    im_x += img_width as i32;
+                }
 
                 let img_x = (im_x as usize).rem_euclid(img_width);
                 let img_y = (im_y as usize).rem_euclid(img_height);
@@ -226,9 +230,9 @@ impl Canvas {
                 self.check_and_push(i, y + 1, old_color, &mut stack);
             }
             match connectivity {
-                Connectivity::FOUR => { }
+                Connectivity::FOUR => {}
                 Connectivity::EIGHT => {
-                    if left > 0{
+                    if left > 0 {
                         self.check_and_push(left - 1, y - 1, old_color, &mut stack);
                         self.check_and_push(left - 1, y + 1, old_color, &mut stack);
                     }
@@ -335,42 +339,33 @@ impl Canvas {
     /// pos2 - вторая точка линии;
     /// color - цвет линии;
     pub fn draw_sharp_line(&mut self, pos1: Pos2, pos2: Pos2, color: Color32) {
-        let mut x0 = pos1.x as i32;
-        let mut y0 = pos1.y as i32;
-        let mut x1 = pos2.x as i32;
-        let mut y1 = pos2.y as i32;
+        let mut x0 = pos1.x.round() as i32;
+        let mut y0 = pos1.y.round() as i32;
+        let x1 = pos2.x.round() as i32;
+        let y1 = pos2.y.round() as i32;
 
-        let steep = (y1 - y0).abs() > (x1 - x0).abs();
+        let dx = x1.abs_diff(x0) as i32;
+        let sx = if x0 < x1 { 1 } else { -1 };
+        let dy = -(y1.abs_diff(y0) as i32);
+        let sy = if y0 < y1 { 1 } else { -1 };
+        let mut error = dx + dy;
 
-        if steep {
-            std::mem::swap(&mut x0, &mut y0);
-            std::mem::swap(&mut x1, &mut y1);
-        }
-
-        if x0 > x1 {
-            std::mem::swap(&mut x0, &mut x1);
-            std::mem::swap(&mut y0, &mut y1);
-        }
-
-        let deltax = x1 - x0;
-        let deltay = (y1 - y0).abs();
-
-        let mut error = 0;
-        let deltaerr = deltay + 1;
-        let mut y = y0;
-        let diry = if y1 > y0 { 1 } else { -1 };
-
-        for x in x0..=x1 {
-            if steep {
-                self[(y as usize, x as usize)] = color;
-            } else {
-                self[(x as usize, y as usize)] = color;
+        loop {
+            self[(x0 as usize, y0 as usize)] = color;
+            let e2 = 2 * error;
+            if e2 >= dy {
+                if x0 == x1 {
+                    break;
+                }
+                error += dy;
+                x0 += sx;
             }
-
-            error += deltaerr;
-            if error >= (deltax + 1) {
-                y += diry;
-                error -= deltax + 1;
+            if e2 <= dx {
+                if y0 == y1 {
+                    break;
+                }
+                error += dx;
+                y0 += sy;
             }
         }
     }
